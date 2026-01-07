@@ -64,6 +64,7 @@ const Welcome: FC<IWelcomeProps> = ({
     else {
       setInputs(savedInputs)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [savedInputs])
 
   const highLightPromoptTemplate = (() => {
@@ -386,3 +387,6 @@ const Welcome: FC<IWelcomeProps> = ({
 }
 
 export default React.memo(Welcome)
+
+// Named export for the Socratic welcome page component
+export { default as WelcomePage } from './WelcomePage'

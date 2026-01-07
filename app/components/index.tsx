@@ -1,13 +1,15 @@
 'use client'
+
 import type { FC } from 'react'
 import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import produce, { setAutoFreeze } from 'immer'
 import { useBoolean, useGetState } from 'ahooks'
+import cn from 'classnames'
+
 import useConversation from '@/hooks/use-conversation'
 import Toast from '@/app/components/base/toast'
 import Sidebar from '@/app/components/sidebar'
-import ConfigSence from '@/app/components/config-scence'
 import Header from '@/app/components/header'
 import { fetchAppParams, fetchChatList, fetchConversations, generationConversationName, sendChatMessage, updateFeedback } from '@/service'
 import type { ChatItem, ConversationItem, Feedbacktype, PromptConfig, VisionFile, VisionSettings } from '@/types/app'
@@ -23,6 +25,32 @@ import { API_KEY, APP_ID, APP_INFO, isShowPrompt, promptTemplate } from '@/confi
 import type { Annotation as AnnotationType } from '@/types/log'
 import { addFileInfos, sortAgentSorts } from '@/utils/tools'
 
+// New imports for Co-Piloto features
+import { useNavigationStore, useCanvasStore } from '@/stores'
+import { BottomNavigation, TabPanel } from '@/app/components/navigation'
+import { CanvasSEI } from '@/app/components/canvas'
+import { DocsPage } from '@/app/components/docs'
+import { HistoryPage } from '@/app/components/history'
+import { WelcomePage } from '@/app/components/welcome'
+import { parseCanvasUpdates, stripCanvasUpdates, hasCanvasUpdates } from '@/utils/canvasParser'
+
+// Utility to strip system context from query before display
+const stripSystemContext = (query: string): string => {
+  // Remove the system context block that was injected for Dify
+  const contextMarker = '---\n[CONTEXTO DO SISTEMA - NÃO EXIBIR AO USUÁRIO]'
+  const idx = query.indexOf(contextMarker)
+  if (idx > 0) {
+    return query.substring(0, idx).trim()
+  }
+  // Also handle legacy format
+  const legacyMarker = '---\n## CONTEXTO DO CANVAS'
+  const legacyIdx = query.indexOf(legacyMarker)
+  if (legacyIdx > 0) {
+    return query.substring(0, legacyIdx).trim()
+  }
+  return query
+}
+
 export interface IMainProps {
   params: any
 }
@@ -33,6 +61,10 @@ const Main: FC<IMainProps> = () => {
   const isMobile = media === MediaType.mobile
   const hasSetAppConfig = APP_ID && API_KEY
 
+  // Navigation state
+  const { currentTab: _currentTab, setTab, isCanvasCollapsed, toggleCanvasCollapse } = useNavigationStore()
+  const { addSuggestion, getCanvasContextForDify, setCurrentConversation, getCurrentCanvas: _getCurrentCanvas } = useCanvasStore()
+
   /*
   * app info
   */
@@ -41,7 +73,8 @@ const Main: FC<IMainProps> = () => {
   const [promptConfig, setPromptConfig] = useState<PromptConfig | null>(null)
   const [inited, setInited] = useState<boolean>(false)
   // in mobile, show sidebar by click button
-  const [isShowSidebar, { setTrue: showSidebar, setFalse: hideSidebar }] = useBoolean(false)
+  const [_isShowSidebar, { setTrue: showSidebar, setFalse: _hideSidebar }] = useBoolean(false)
+  const [isShowMobileCanvas, { setTrue: showMobileCanvas, setFalse: hideMobileCanvas }] = useBoolean(false)
   const [visionConfig, setVisionConfig] = useState<VisionSettings | undefined>({
     enabled: false,
     number_limits: 2,
@@ -52,7 +85,7 @@ const Main: FC<IMainProps> = () => {
 
   useEffect(() => {
     if (APP_INFO?.title) { document.title = `${APP_INFO.title} - Powered by Dify` }
-  }, [APP_INFO?.title])
+  }, [])
 
   // onData change thought (the produce obj). https://github.com/immerjs/immer/issues/576
   useEffect(() => {
@@ -133,14 +166,15 @@ const Main: FC<IMainProps> = () => {
         data.forEach((item: any) => {
           newChatList.push({
             id: `question-${item.id}`,
-            content: item.query,
+            content: stripSystemContext(item.query),
             isAnswer: false,
             message_files: item.message_files?.filter((file: any) => file.belongs_to === 'user') || [],
 
           })
           newChatList.push({
             id: item.id,
-            content: item.answer,
+            // Strip any CANVAS_UPDATE tags from history answers
+            content: stripCanvasUpdates(item.answer),
             agent_thoughts: addFileInfos(item.agent_thoughts ? sortAgentSorts(item.agent_thoughts) : item.agent_thoughts, item.message_files),
             feedback: item.feedback,
             isAnswer: true,
@@ -148,11 +182,14 @@ const Main: FC<IMainProps> = () => {
           })
         })
         setChatList(newChatList)
+        // Sync canvas with loaded conversation
+        setCurrentConversation(currConversationId)
       })
     }
 
     if (isNewConversation && isChatStarted) { setChatList(generateNewChatListWithOpenStatement()) }
   }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(handleConversationSwitch, [currConversationId, inited])
 
   const handleConversationIdChange = (id: string) => {
@@ -165,7 +202,12 @@ const Main: FC<IMainProps> = () => {
     }
     // trigger handleConversationSwitch
     setCurrConversationId(id, APP_ID)
-    hideSidebar()
+    // Sync canvas with conversation - each conversation has its own canvas
+    if (id !== '-1') {
+      setCurrentConversation(id)
+    }
+    // Switch to chat tab when selecting a conversation
+    setTab('chat')
   }
 
   /*
@@ -185,7 +227,7 @@ const Main: FC<IMainProps> = () => {
     }
   }, [chatList, currConversationId])
   // user can not edit inputs if user had send message
-  const canEditInputs = !chatList.some(item => item.isAnswer === false) && isNewConversation
+  const _canEditInputs = !chatList.some(item => item.isAnswer === false) && isNewConversation
   const createNewChat = () => {
     // if new chat is already exist, do not create new chat
     if (conversationList.some(item => item.id === '-1')) { return }
@@ -228,19 +270,8 @@ const Main: FC<IMainProps> = () => {
     }
     (async () => {
       try {
-        const [conversationData, appParams] = await Promise.all([fetchConversations(), fetchAppParams()])
-        // handle current conversation id
-        const { data: conversations, error } = conversationData as { data: ConversationItem[], error: string }
-        if (error) {
-          Toast.notify({ type: 'error', message: error })
-          throw new Error(error)
-          return
-        }
-        const _conversationId = getConversationIdFromStorage(APP_ID)
-        const currentConversation = conversations.find(item => item.id === _conversationId)
-        const isNotNewConversation = !!currentConversation
-
-        // fetch new conversation info
+        const appParams = await fetchAppParams()
+        // 1. Initialize App Params first to show UI immediately
         const { user_input_form, opening_statement: introduction, file_upload, system_parameters, suggested_questions = [] }: any = appParams
         setLocaleOnClient(APP_INFO.default_language, true)
         setNewConversationInfo({
@@ -248,13 +279,7 @@ const Main: FC<IMainProps> = () => {
           introduction,
           suggested_questions,
         })
-        if (isNotNewConversation) {
-          setExistConversationInfo({
-            name: currentConversation.name || t('app.chat.newChatDefaultName'),
-            introduction,
-            suggested_questions,
-          })
-        }
+
         const prompt_variables = userInputsFormToPromptVariables(user_input_form)
         setPromptConfig({
           prompt_template: promptTemplate,
@@ -274,11 +299,33 @@ const Main: FC<IMainProps> = () => {
           number_limits: file_upload?.number_limits,
           fileUploadConfig: file_upload?.fileUploadConfig,
         })
+
+        // Unblock UI rendering here
+        setInited(true)
+
+        // 2. Fetch Conversations in background
+        const conversationData = await fetchConversations()
+        const { data: conversations, error } = conversationData as { data: ConversationItem[], error: string }
+        if (error) {
+          Toast.notify({ type: 'error', message: error })
+          return
+        }
+
+        // Handle current conversation logic
+        const _conversationId = getConversationIdFromStorage(APP_ID)
+        const currentConversation = conversations.find(item => item.id === _conversationId)
+        const isNotNewConversation = !!currentConversation
+
         setConversationList(conversations as ConversationItem[])
 
-        if (isNotNewConversation) { setCurrConversationId(_conversationId, APP_ID, false) }
-
-        setInited(true)
+        if (isNotNewConversation) {
+          setCurrConversationId(_conversationId, APP_ID, false)
+          setExistConversationInfo({
+            name: currentConversation.name || t('app.chat.newChatDefaultName'),
+            introduction,
+            suggested_questions,
+          })
+        }
       }
       catch (e: any) {
         if (e.status === 404) {
@@ -290,10 +337,11 @@ const Main: FC<IMainProps> = () => {
         }
       }
     })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const [isResponding, { setTrue: setRespondingTrue, setFalse: setRespondingFalse }] = useBoolean(false)
-  const [abortController, setAbortController] = useState<AbortController | null>(null)
+  const [_abortController, setAbortController] = useState<AbortController | null>(null)
   const { notify } = Toast
   const logError = (message: string) => {
     notify({ type: 'error', message })
@@ -315,12 +363,12 @@ const Main: FC<IMainProps> = () => {
     return true
   }
 
-  const [controlFocus, setControlFocus] = useState(0)
-  const [openingSuggestedQuestions, setOpeningSuggestedQuestions] = useState<string[]>([])
-  const [messageTaskId, setMessageTaskId] = useState('')
-  const [hasStopResponded, setHasStopResponded, getHasStopResponded] = useGetState(false)
-  const [isRespondingConIsCurrCon, setIsRespondingConCurrCon, getIsRespondingConIsCurrCon] = useGetState(true)
-  const [userQuery, setUserQuery] = useState('')
+  const [_controlFocus, _setControlFocus] = useState(0)
+  const [_openingSuggestedQuestions, _setOpeningSuggestedQuestions] = useState<string[]>([])
+  const [_messageTaskId, setMessageTaskId] = useState('')
+  const [_hasStopResponded, _setHasStopResponded, _getHasStopResponded] = useGetState(false)
+  const [_isRespondingConIsCurrCon, setIsRespondingConCurrCon, _getIsRespondingConIsCurrCon] = useGetState(true)
+  const [_userQuery, _setUserQuery] = useState('')
 
   const updateCurrentQA = ({
     responseItem,
@@ -372,9 +420,14 @@ const Main: FC<IMainProps> = () => {
       })
     }
 
+    // Get canvas context for Dify (NOT shown to user)
+    const canvasContext = getCanvasContextForDify()
+
+    // Build the query - canvas context is sent as a system note, not displayed
     const data: Record<string, any> = {
       inputs: toServerInputs,
-      query: message,
+      // The user sees only their message, but Dify receives context
+      query: canvasContext ? `${message}\n\n---\n[CONTEXTO DO SISTEMA - NÃO EXIBIR AO USUÁRIO]\n${canvasContext}` : message,
       conversation_id: isNewConversation ? null : currConversationId,
     }
 
@@ -499,6 +552,8 @@ const Main: FC<IMainProps> = () => {
           console.log('[Main] Updating conversation ID to:', recoveredId)
           setCurrConversationId(recoveredId, APP_ID, true)
           setChatNotStarted()
+          // Create canvas for new conversation, preserving any suggestions from the initial message
+          setCurrentConversation(recoveredId, false)
         } else {
           console.warn('[Main] No conversation ID found to switch to.')
         }
@@ -554,6 +609,27 @@ const Main: FC<IMainProps> = () => {
         })
       },
       onMessageEnd: (messageEnd) => {
+        // Parse canvas updates from the response
+        const fullContent = responseItem.content
+
+        if (hasCanvasUpdates(fullContent)) {
+          try {
+            const updates = parseCanvasUpdates(fullContent)
+
+            if (updates.length > 0) {
+              updates.forEach((update) => {
+                addSuggestion(update.field, update.value)
+              })
+              // Remove canvas update blocks from displayed content
+              responseItem.content = stripCanvasUpdates(fullContent)
+              Toast.notify({ type: 'info', message: `${updates.length} sugestão(ões) para o Canvas` })
+            }
+          } catch (error) {
+            console.error('[CanvasParser] Failed to process updates:', error)
+            // Do not crash, let the message display normally
+          }
+        }
+
         if (messageEnd.metadata?.annotation_reply) {
           responseItem.id = messageEnd.id
           responseItem.annotation = ({
@@ -603,7 +679,7 @@ const Main: FC<IMainProps> = () => {
           draft.splice(draft.findIndex(item => item.id === placeholderAnswerId), 1)
         }))
       },
-      onWorkflowStarted: ({ workflow_run_id, task_id }) => {
+      onWorkflowStarted: ({ workflow_run_id, task_id: _task_id }) => {
         // taskIdRef.current = task_id
         responseItem.workflow_run_id = workflow_run_id
         responseItem.workflowProcess = {
@@ -667,7 +743,7 @@ const Main: FC<IMainProps> = () => {
     notify({ type: 'success', message: t('common.api.success') })
   }
 
-  const renderSidebar = () => {
+  const _renderSidebar = () => {
     if (!APP_ID || !APP_INFO || !promptConfig) { return null }
     return (
       <Sidebar
@@ -679,58 +755,163 @@ const Main: FC<IMainProps> = () => {
     )
   }
 
+  // Render chat tab content
+  // Render chat tab content
+  const renderChatContent = () => {
+    // Handler for welcome page - starts chat if needed and sends message
+    const handleWelcomeSend = (message: string) => {
+      if (!hasSetInputs) {
+        handleStartChat({})
+        setTimeout(() => handleSend(message), 100)
+      } else {
+        handleSend(message)
+      }
+    }
+
+    // Show welcome if no conversation OR no user messages yet
+    const showWelcome = !hasSetInputs || chatList.filter(item => !item.isAnswer).length === 0
+
+    return (
+      <div className={cn(
+        'flex h-full overflow-hidden',
+        isMobile ? 'flex-col' : 'flex-row',
+      )}>
+        {/* Canvas Panel - Collapsible sidebar */}
+        {/* Canvas Panel - Collapsible sidebar */}
+        {(!isCanvasCollapsed || (isMobile && isShowMobileCanvas)) && (
+          <div className={cn(
+            'bg-[#f2efeb] border-r border-gray-200 flex-shrink-0 overflow-hidden',
+            isMobile ? 'fixed inset-0 z-50 w-full h-[100dvh]' : 'w-[380px] h-full',
+          )}>
+            <div className="h-full flex flex-col relative">
+              {isMobile && (
+                <button
+                  onClick={hideMobileCanvas}
+                  className="absolute top-4 right-4 z-50 p-2 bg-white rounded-full shadow-sm text-gray-500"
+                >
+                  ✕
+                </button>
+              )}
+              <CanvasSEI
+                isCollapsed={false}
+                onToggleCollapse={toggleCanvasCollapse}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Collapsed Canvas Toggle Button - Desktop only */}
+        {isCanvasCollapsed && !isMobile && (
+          <button
+            onClick={toggleCanvasCollapse}
+            className="flex-shrink-0 w-12 h-full bg-[#f2efeb] border-r border-gray-200 flex flex-col items-center justify-center gap-2 hover:bg-gray-100 transition-colors"
+            title="Expandir Canvas"
+          >
+            <span className="text-xl">📋</span>
+            <svg className="w-4 h-4 text-gray-500 rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        )}
+
+        {/* Chat Panel - Main content area */}
+        <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-white overflow-hidden">
+          {/* Chat Header */}
+          <div className="flex-shrink-0 h-14 border-b border-gray-100 flex items-center justify-between px-4 bg-white">
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-semibold text-gray-800">💬 Chat</span>
+              {currConversationId && currConversationId !== '-1' && (
+                <span className="text-xs text-gray-400 truncate max-w-[150px]">
+                  {conversationName || 'Conversa atual'}
+                </span>
+              )}
+            </div>
+            <button
+              onClick={() => {
+                setCurrConversationId('-1')
+                setChatList([])
+                setChatNotStarted()
+                resetNewConversationInputs()
+                setCurrentConversation('-1')
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-[#4b8c99] hover:bg-[#4b8c99]/10 rounded-lg transition-colors"
+              title="Nova Conversa"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <span>Nova</span>
+            </button>
+          </div>
+
+          {/* Chat Body - either Welcome or Messages + Input */}
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+            {showWelcome
+              ? (
+                <WelcomePage
+                  onSend={handleWelcomeSend}
+                  className="flex-1"
+                />
+              )
+              : (
+                <div className="flex-1 min-h-0" ref={chatListDomRef}>
+                  <Chat
+                    chatList={chatList}
+                    onSend={handleSend}
+                    onFeedback={handleFeedback}
+                    isResponding={isResponding}
+                    checkCanSend={checkCanSend}
+                    visionConfig={visionConfig}
+                    fileConfig={fileConfig}
+                  />
+                </div>
+              )}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   if (appUnavailable) { return <AppUnavailable isUnknownReason={isUnknownReason} errMessage={!hasSetAppConfig ? 'Please set APP_ID and API_KEY in config/index.tsx' : ''} /> }
 
   if (!APP_ID || !APP_INFO || !promptConfig) { return <Loading type='app' /> }
 
   return (
-    <div className='bg-gray-100'>
+    <div className='fixed inset-0 flex flex-col bg-gray-100 overflow-hidden'>
       <Header
         title={APP_INFO.title}
         isMobile={isMobile}
         onShowSideBar={showSidebar}
-        onCreateNewChat={() => handleConversationIdChange('-1')}
+        onCreateNewChat={createNewChat}
+        onShowCanvas={showMobileCanvas}
       />
-      <div className="flex rounded-t-2xl bg-white overflow-hidden">
-        {/* sidebar */}
-        {!isMobile && renderSidebar()}
-        {isMobile && isShowSidebar && (
-          <div className='fixed inset-0 z-50' style={{ backgroundColor: 'rgba(35, 56, 118, 0.2)' }} onClick={hideSidebar} >
-            <div className='inline-block' onClick={e => e.stopPropagation()}>
-              {renderSidebar()}
-            </div>
-          </div>
-        )}
-        {/* main */}
-        <div className='flex-grow flex flex-col h-[calc(100vh_-_3rem)] overflow-y-auto'>
-          <ConfigSence
-            conversationName={conversationName}
-            hasSetInputs={hasSetInputs}
-            isPublicVersion={isShowPrompt}
-            siteInfo={APP_INFO}
-            promptConfig={promptConfig}
-            onStartChat={handleStartChat}
-            canEditInputs={canEditInputs}
-            savedInputs={currInputs as Record<string, any>}
-            onInputsChange={setCurrInputs}
-          ></ConfigSence>
 
-          {
-            hasSetInputs && (
-              <div className='relative grow pc:w-[794px] max-w-full mobile:w-full pb-[180px] mx-auto mb-3.5' ref={chatListDomRef}>
-                <Chat
-                  chatList={chatList}
-                  onSend={handleSend}
-                  onFeedback={handleFeedback}
-                  isResponding={isResponding}
-                  checkCanSend={checkCanSend}
-                  visionConfig={visionConfig}
-                  fileConfig={fileConfig}
-                />
-              </div>)
-          }
+      <div className="flex-1 flex overflow-hidden">
+        {/* Main content area with tabs */}
+        <div className='flex-1 flex flex-col overflow-hidden bg-white rounded-t-2xl'>
+          {/* Chat Tab */}
+          <TabPanel tabId="chat" className="flex-1 overflow-hidden">
+            {renderChatContent()}
+          </TabPanel>
+
+          {/* Docs Tab */}
+          <TabPanel tabId="docs" className="flex-1 overflow-hidden">
+            <DocsPage />
+          </TabPanel>
+
+          {/* History Tab */}
+          <TabPanel tabId="history" className="flex-1 overflow-hidden">
+            <HistoryPage
+              conversationList={conversationList}
+              currentConversationId={currConversationId}
+              onSelectConversation={handleConversationIdChange}
+            />
+          </TabPanel>
         </div>
       </div>
+
+      {/* Bottom Navigation */}
+      <BottomNavigation className="z-50" />
     </div>
   )
 }

@@ -12,7 +12,6 @@ import type { ChatItem, VisionFile, VisionSettings } from '@/types/app'
 import { TransferMethod } from '@/types/app'
 import Tooltip from '@/app/components/base/tooltip'
 import Toast from '@/app/components/base/toast'
-import ChatImageUploader from '@/app/components/base/image-uploader/chat-image-uploader'
 import VoiceInput from '@/app/components/base/voice-input'
 import CameraInput from '@/app/components/base/camera-input'
 
@@ -52,7 +51,7 @@ const Chat: FC<IChatProps> = ({
   isResponding,
   controlClearQuery,
   visionConfig,
-  fileConfig,
+  fileConfig: _fileConfig,
 }) => {
   const { t } = useTranslation()
   const { notify } = Toast
@@ -151,9 +150,9 @@ const Chat: FC<IChatProps> = ({
   }
 
   return (
-    <div className={cn(!feedbackDisabled && 'px-3.5', 'h-full')}>
-      {/* Chat List */}
-      <div className="h-full space-y-[30px] pb-[150px]">
+    <div className={cn(!feedbackDisabled && 'px-3.5', 'flex flex-col h-full')}>
+      {/* Chat List - Scrollable */}
+      <div className="flex-1 overflow-y-auto space-y-[30px] pb-4">
         {chatList.map((item) => {
           if (item.isAnswer) {
             const isLast = item.id === chatList[chatList.length - 1].id
@@ -179,16 +178,12 @@ const Chat: FC<IChatProps> = ({
       </div>
       {
         !isHideSendInput && (
-          <div className='fixed z-10 bottom-0 right-0 pc:left-[244px] tablet:left-[192px] mobile:left-0 bg-white border-t border-gray-200 p-4'>
-            <div className='mx-auto pc:w-[794px] tablet:w-[794px] mobile:w-full flex items-end border-[1.5px] border-gray-200 rounded-xl bg-white focus-within:border-primary-300 transition-colors'>
+          <div className='flex-shrink-0 bg-white border-t border-gray-200 p-4'>
+            <div className='mx-auto max-w-[794px] flex items-end border-[1.5px] border-gray-200 rounded-xl bg-white focus-within:border-primary-300 transition-colors'>
               {
                 visionConfig?.enabled && (
                   <div className='flex items-center px-3 py-[9px] border-r border-gray-100 gap-2'>
-                    <ChatImageUploader
-                      settings={visionConfig}
-                      onUpload={onUpload}
-                      disabled={files.length >= visionConfig.number_limits}
-                    />
+                    {/* ChatImageUploader removed per user request */}
                     <CameraInput
                       onUpload={onUpload}
                       disabled={files.length >= visionConfig.number_limits}
@@ -214,14 +209,14 @@ const Chat: FC<IChatProps> = ({
                 <Textarea
                   className='block w-full px-4 py-[9px] leading-5 max-h-[150px] text-base text-gray-700 outline-none appearance-none resize-none'
                   value={query}
-                  placeholder={t('app.chat.userInputPlaceholder') || 'Write your message...'}
+                  placeholder="Digite algo aqui..."
                   onChange={handleContentChange}
                   onKeyUp={handleKeyUp}
                   onKeyDown={handleKeyDown}
                   autoSize
                 />
                 <div className="absolute bottom-2 right-4 flex items-center h-8">
-                  <div className={`${s.count} mr-3 h-5 leading-5 text-sm bg-gray-50 text-gray-500 px-2 rounded`}>{query.trim().length}</div>
+                  {/* Counter Removed */}
                   <Tooltip
                     selector='send-tip'
                     htmlContent={
