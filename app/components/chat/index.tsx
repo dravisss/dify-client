@@ -13,9 +13,11 @@ import { TransferMethod } from '@/types/app'
 import Tooltip from '@/app/components/base/tooltip'
 import Toast from '@/app/components/base/toast'
 import ChatImageUploader from '@/app/components/base/image-uploader/chat-image-uploader'
+import VoiceInput from '@/app/components/base/voice-input'
+import CameraInput from '@/app/components/base/camera-input'
+
 import ImageList from '@/app/components/base/image-uploader/image-list'
 import { useImageFiles } from '@/app/components/base/image-uploader/hooks'
-import FileUploaderInAttachmentWrapper from '@/app/components/base/file-uploader-in-attachment'
 import type { FileEntity, FileUpload } from '@/app/components/base/file-uploader-in-attachment/types'
 import { getProcessedFiles } from '@/app/components/base/file-uploader-in-attachment/utils'
 
@@ -98,7 +100,14 @@ const Chat: FC<IChatProps> = ({
 
   const handleSend = () => {
     if (!valid() || (checkCanSend && !checkCanSend())) { return }
-    const imageFiles: VisionFile[] = files.filter(file => file.progress !== -1).map(fileItem => ({
+
+    const isUploading = files.some(file => file.progress !== -1 && file.progress < 100 && !file.fileId)
+    if (isUploading) {
+      logError('Please wait for files to upload')
+      return
+    }
+
+    const imageFiles: VisionFile[] = files.filter(file => file.progress !== -1 && file.fileId).map(fileItem => ({
       type: 'image',
       transfer_method: fileItem.type,
       url: fileItem.url,
@@ -144,7 +153,7 @@ const Chat: FC<IChatProps> = ({
   return (
     <div className={cn(!feedbackDisabled && 'px-3.5', 'h-full')}>
       {/* Chat List */}
-      <div className="h-full space-y-[30px]">
+      <div className="h-full space-y-[30px] pb-[150px]">
         {chatList.map((item) => {
           if (item.isAnswer) {
             const isLast = item.id === chatList[chatList.length - 1].id
@@ -170,66 +179,61 @@ const Chat: FC<IChatProps> = ({
       </div>
       {
         !isHideSendInput && (
-          <div className='fixed z-10 bottom-0 left-1/2 transform -translate-x-1/2 pc:ml-[122px] tablet:ml-[96px] mobile:ml-0 pc:w-[794px] tablet:w-[794px] max-w-full mobile:w-full px-3.5'>
-            <div className='p-[5.5px] max-h-[150px] bg-white border-[1.5px] border-gray-200 rounded-xl overflow-y-auto'>
+          <div className='fixed z-10 bottom-0 right-0 pc:left-[244px] tablet:left-[192px] mobile:left-0 bg-white border-t border-gray-200 p-4'>
+            <div className='mx-auto pc:w-[794px] tablet:w-[794px] mobile:w-full flex items-end border-[1.5px] border-gray-200 rounded-xl bg-white focus-within:border-primary-300 transition-colors'>
               {
                 visionConfig?.enabled && (
-                  <>
-                    <div className='absolute bottom-2 left-2 flex items-center'>
-                      <ChatImageUploader
-                        settings={visionConfig}
-                        onUpload={onUpload}
-                        disabled={files.length >= visionConfig.number_limits}
-                      />
-                      <div className='mx-1 w-[1px] h-4 bg-black/5' />
-                    </div>
-                    <div className='pl-[52px]'>
-                      <ImageList
-                        list={files}
-                        onRemove={onRemove}
-                        onReUpload={onReUpload}
-                        onImageLinkLoadSuccess={onImageLinkLoadSuccess}
-                        onImageLinkLoadError={onImageLinkLoadError}
-                      />
-                    </div>
-                  </>
-                )
-              }
-              {
-                fileConfig?.enabled && (
-                  <div className={`${visionConfig?.enabled ? 'pl-[52px]' : ''} mb-1`}>
-                    <FileUploaderInAttachmentWrapper
-                      fileConfig={fileConfig}
-                      value={attachmentFiles}
-                      onChange={setAttachmentFiles}
+                  <div className='flex items-center px-3 py-[9px] border-r border-gray-100 gap-2'>
+                    <ChatImageUploader
+                      settings={visionConfig}
+                      onUpload={onUpload}
+                      disabled={files.length >= visionConfig.number_limits}
                     />
+                    <CameraInput
+                      onUpload={onUpload}
+                      disabled={files.length >= visionConfig.number_limits}
+                      maxSize={+visionConfig.image_file_size_limit!}
+                    />
+                    <VoiceInput onText={(text) => {
+                      setQuery(prev => prev + text)
+                      queryRef.current = queryRef.current + text
+                    }} />
                   </div>
                 )
               }
-              <Textarea
-                className={`
-                  block w-full px-2 pr-[118px] py-[7px] leading-5 max-h-none text-base text-gray-700 outline-none appearance-none resize-none
-                  ${visionConfig?.enabled && 'pl-12'}
-                `}
-                value={query}
-                onChange={handleContentChange}
-                onKeyUp={handleKeyUp}
-                onKeyDown={handleKeyDown}
-                autoSize
-              />
-              <div className="absolute bottom-2 right-6 flex items-center h-8">
-                <div className={`${s.count} mr-3 h-5 leading-5 text-sm bg-gray-50 text-gray-500 px-2 rounded`}>{query.trim().length}</div>
-                <Tooltip
-                  selector='send-tip'
-                  htmlContent={
-                    <div>
-                      <div>{t('common.operation.send')} Enter</div>
-                      <div>{t('common.operation.lineBreak')} Shift Enter</div>
-                    </div>
-                  }
-                >
-                  <div className={`${s.sendBtn} w-8 h-8 cursor-pointer rounded-md`} onClick={handleSend}></div>
-                </Tooltip>
+              <div className='flex-1 relative pb-1'>
+                <div className='pl-2 pr-[118px]'>
+                  <ImageList
+                    list={files}
+                    onRemove={onRemove}
+                    onReUpload={onReUpload}
+                    onImageLinkLoadSuccess={onImageLinkLoadSuccess}
+                    onImageLinkLoadError={onImageLinkLoadError}
+                  />
+                </div>
+                <Textarea
+                  className='block w-full px-4 py-[9px] leading-5 max-h-[150px] text-base text-gray-700 outline-none appearance-none resize-none'
+                  value={query}
+                  placeholder={t('app.chat.userInputPlaceholder') || 'Write your message...'}
+                  onChange={handleContentChange}
+                  onKeyUp={handleKeyUp}
+                  onKeyDown={handleKeyDown}
+                  autoSize
+                />
+                <div className="absolute bottom-2 right-4 flex items-center h-8">
+                  <div className={`${s.count} mr-3 h-5 leading-5 text-sm bg-gray-50 text-gray-500 px-2 rounded`}>{query.trim().length}</div>
+                  <Tooltip
+                    selector='send-tip'
+                    htmlContent={
+                      <div>
+                        <div>{t('common.operation.send')} Enter</div>
+                        <div>{t('common.operation.lineBreak')} Shift Enter</div>
+                      </div>
+                    }
+                  >
+                    <div className={`${s.sendBtn} w-8 h-8 cursor-pointer rounded-md`} onClick={handleSend}></div>
+                  </Tooltip>
+                </div>
               </div>
             </div>
           </div>

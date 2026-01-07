@@ -34,6 +34,7 @@ yarn-error.log*
 .vercel
 
 # typescript
+Prompt Agente.md
 *.tsbuildinfo
 next-env.d.ts
 

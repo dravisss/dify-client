@@ -1,4 +1,5 @@
 import type { NextRequest } from 'next/server'
+import { NextResponse } from 'next/server'
 import { client, getInfo } from '@/app/api/utils/common'
 
 export async function POST(request: NextRequest) {
@@ -10,6 +11,9 @@ export async function POST(request: NextRequest) {
     return new Response(res.data.id as any)
   }
   catch (e: any) {
-    return new Response(e.message)
+    return NextResponse.json(
+      { message: e.message },
+      { status: e.response?.status || 500 },
+    )
   }
 }

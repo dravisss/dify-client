@@ -354,8 +354,9 @@ const Main: FC<IMainProps> = () => {
     }
   }
 
+  const isRespondingRef = useRef(false)
   const handleSend = async (message: string, files?: VisionFile[]) => {
-    if (isResponding) {
+    if (isResponding || isRespondingRef.current) {
       notify({ type: 'info', message: t('app.errorMessage.waitForResponse') })
       return
     }
@@ -423,12 +424,16 @@ const Main: FC<IMainProps> = () => {
     const prevTempNewConversationId = getCurrConversationId() || '-1'
     let tempNewConversationId = ''
 
+    isRespondingRef.current = true
     setRespondingTrue()
     sendChatMessage(data, {
       getAbortController: (abortController) => {
         setAbortController(abortController)
       },
       onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId }: any) => {
+        if (isFirstMessage) {
+          console.log('[Main] First message metadata:', { newConversationId, messageId, taskId })
+        }
         if (!isAgentMode) {
           responseItem.content = responseItem.content + message
         }
@@ -441,7 +446,9 @@ const Main: FC<IMainProps> = () => {
           hasSetResponseId = true
         }
 
-        if (isFirstMessage && newConversationId) { tempNewConversationId = newConversationId }
+        if (newConversationId) {
+          tempNewConversationId = newConversationId
+        }
 
         setMessageTaskId(taskId)
         // has switched to other conversation
@@ -457,21 +464,46 @@ const Main: FC<IMainProps> = () => {
         })
       },
       async onCompleted(hasError?: boolean) {
-        if (hasError) { return }
-
-        if (getConversationIdChangeBecauseOfNew()) {
-          const { data: allConversations }: any = await fetchConversations()
-          const newItem: any = await generationConversationName(allConversations[0].id)
-
-          const newAllConversations = produce(allConversations, (draft: any) => {
-            draft[0].name = newItem.name
-          })
-          setConversationList(newAllConversations as any)
+        console.log('[Main] Message completed. hasError:', hasError, 'tempNewConversationId:', tempNewConversationId)
+        if (hasError) {
+          isRespondingRef.current = false
+          return
         }
+
+        let recoveredId = tempNewConversationId
+        if (getConversationIdChangeBecauseOfNew()) {
+          console.log('[Main] Handling new conversation list sync...')
+          const { data: allConversations }: any = await fetchConversations()
+
+          if (allConversations && allConversations.length > 0) {
+            console.log('[Main] All conversations count:', allConversations.length, 'First ID:', allConversations[0].id)
+
+            // Recovery: if tempNewConversationId is empty, take the latest one from the list
+            if (!recoveredId) {
+              recoveredId = allConversations[0].id
+              console.log('[Main] Recovered conversation ID from list:', recoveredId)
+            }
+
+            const newItem: any = await generationConversationName(allConversations[0].id)
+            const newAllConversations = produce(allConversations, (draft: any) => {
+              draft[0].name = newItem.name
+            })
+            setConversationList(newAllConversations as any)
+          }
+        }
+
         setConversationIdChangeBecauseOfNew(false)
         resetNewConversationInputs()
-        setChatNotStarted()
-        setCurrConversationId(tempNewConversationId, APP_ID, true)
+
+        if (recoveredId) {
+          console.log('[Main] Updating conversation ID to:', recoveredId)
+          setCurrConversationId(recoveredId, APP_ID, true)
+          setChatNotStarted()
+        } else {
+          console.warn('[Main] No conversation ID found to switch to.')
+        }
+
+        isRespondingRef.current = false
         setRespondingFalse()
       },
       onFile(file) {
@@ -564,6 +596,7 @@ const Main: FC<IMainProps> = () => {
         ))
       },
       onError() {
+        isRespondingRef.current = false
         setRespondingFalse()
         // role back placeholder answer
         setChatList(produce(getChatList(), (draft) => {

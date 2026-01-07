@@ -267,7 +267,25 @@ const baseFetch = (url: string, fetchOptions: any, { needAllResponseContent }: I
     delete options.params
   }
 
-  if (body) { options.body = JSON.stringify(body) }
+  if (options.headers instanceof Headers) {
+    options.headers = new Headers(options.headers)
+  }
+
+  if (body) {
+    if (body instanceof FormData) {
+      options.body = body
+      if (options.headers instanceof Headers) {
+        options.headers.delete('Content-Type')
+      } else {
+        // Fallback if headers is a plain object (unlikely given baseOptions, but safe)
+        // @ts-expect-error: ignore type mismatch for dynamic response parsing
+        delete options.headers['Content-Type']
+      }
+    }
+    else {
+      options.body = JSON.stringify(body)
+    }
+  }
 
   // Handle timeout
   return Promise.race([
