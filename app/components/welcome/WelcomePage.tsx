@@ -82,11 +82,16 @@ const WelcomePage: FC<WelcomePageProps> = ({
           <div className="flex items-end gap-2 bg-gray-50 rounded-xl px-3 py-2 border border-gray-200 focus-within:border-[#4b8c99] transition-colors">
             <textarea
               value={inputValue}
-              onChange={e => setInputValue(e.target.value)}
+              onChange={(e) => {
+                setInputValue(e.target.value)
+                e.target.style.height = 'auto'
+                e.target.style.height = `${e.target.scrollHeight}px`
+              }}
               onKeyDown={handleKeyDown}
               placeholder="Digite algo aqui..."
-              className="flex-1 bg-transparent resize-none outline-none text-gray-700 placeholder-gray-400 text-sm max-h-[80px]"
+              className="flex-1 bg-transparent resize-none outline-none text-gray-700 placeholder-gray-400 text-sm max-h-[120px]"
               rows={1}
+              style={{ minHeight: '24px' }}
             />
             <button
               onClick={handleSend}

@@ -12,6 +12,7 @@ import type { ChatItem, VisionFile, VisionSettings } from '@/types/app'
 import { TransferMethod } from '@/types/app'
 import Tooltip from '@/app/components/base/tooltip'
 import Toast from '@/app/components/base/toast'
+import ChatImageUploader from '@/app/components/base/image-uploader/chat-image-uploader'
 import VoiceInput from '@/app/components/base/voice-input'
 import CameraInput from '@/app/components/base/camera-input'
 
@@ -183,7 +184,11 @@ const Chat: FC<IChatProps> = ({
               {
                 visionConfig?.enabled && (
                   <div className='flex items-center px-3 py-[9px] border-r border-gray-100 gap-2'>
-                    {/* ChatImageUploader removed per user request */}
+                    <ChatImageUploader
+                      settings={visionConfig}
+                      onUpload={onUpload}
+                      disabled={files.length >= visionConfig.number_limits}
+                    />
                     <CameraInput
                       onUpload={onUpload}
                       disabled={files.length >= visionConfig.number_limits}
