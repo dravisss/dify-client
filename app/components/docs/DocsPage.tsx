@@ -55,23 +55,47 @@ const DocsPage: FC = () => {
           </div>
         </div>
 
-        {/* Extra Resources Section */}
-        <div>
-          <h2 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-            <span>📚</span> RECURSOS EXTRAS
+        {/* Framework S.E.I. Didactic Box */}
+        <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4">
+          <h2 className="text-sm font-bold text-indigo-900 mb-3 flex items-center gap-2">
+            <span>🧠</span> FRAMEWORK S.E.I.
           </h2>
-          <div className="space-y-2">
-            <div className="bg-white rounded-lg p-3 border border-gray-200 text-sm text-gray-600">
-              <span className="mr-2">•</span>
-              Guia de Tipos de Problema (Cynefin)
+
+          <div className="space-y-3">
+            <div className="flex gap-3 items-start">
+              <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0 text-xs font-bold text-indigo-700">
+                S
+              </div>
+              <div>
+                <strong className="text-sm text-indigo-900 block">Situação</strong>
+                <p className="text-xs text-indigo-700 leading-snug">
+                  O que aconteceu? Descreva apenas os fatos, sem adjetivos ou julgamentos.
+                </p>
+              </div>
             </div>
-            <div className="bg-white rounded-lg p-3 border border-gray-200 text-sm text-gray-600">
-              <span className="mr-2">•</span>
-              Checklist Anti-Viés
+
+            <div className="flex gap-3 items-start">
+              <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0 text-xs font-bold text-indigo-700">
+                E
+              </div>
+              <div>
+                <strong className="text-sm text-indigo-900 block">Evidência</strong>
+                <p className="text-xs text-indigo-700 leading-snug">
+                  Como provo isso? Reúna dados quantitativos ou qualitativos.
+                </p>
+              </div>
             </div>
-            <div className="bg-white rounded-lg p-3 border border-gray-200 text-sm text-gray-600">
-              <span className="mr-2">•</span>
-              Template de Pre-Mortem
+
+            <div className="flex gap-3 items-start">
+              <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0 text-xs font-bold text-indigo-700">
+                I
+              </div>
+              <div>
+                <strong className="text-sm text-indigo-900 block">Intervenção</strong>
+                <p className="text-xs text-indigo-700 leading-snug">
+                  O que vou fazer? Proponha um teste prático ou uma ação direta.
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -82,8 +106,8 @@ const DocsPage: FC = () => {
             💡 Como usar
           </h3>
           <p className="text-sm text-gray-600 leading-relaxed">
-            Copie o prompt desejado e cole no ChatGPT, Claude ou Gemini.
-            O agente vai guiar você com perguntas reflexivas.
+            Copie o prompt do agente desejado e cole no ChatGPT ou Gemini.
+            Ele guiará você usando o Framework S.E.I.
           </p>
         </div>
       </div>
