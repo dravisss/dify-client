@@ -547,7 +547,7 @@ const Main: FC<IMainProps> = () => {
           setCurrConversationId(recoveredId, APP_ID, true)
           setChatNotStarted()
           // Create canvas for new conversation, preserving any suggestions from the initial message
-          setCurrentConversation(recoveredId, false)
+          setCurrentConversation(recoveredId)
         } else {
           console.warn('[Main] No conversation ID found to switch to.')
         }
@@ -766,10 +766,16 @@ const Main: FC<IMainProps> = () => {
     const showWelcome = !hasSetInputs || chatList.filter(item => !item.isAnswer).length === 0
 
     return (
-      <div className="w-full h-full flex flex-col bg-white overflow-hidden">
+      <div className="relative w-full flex-1 bg-white overflow-hidden">
         <iframe
           src="https://udify.app/chatbot/4K30XEPl5H2RcX2i"
-          style={{ width: '100%', height: '100%', border: 'none' }}
+          className="absolute left-0 w-full"
+          style={{
+            top: '0',
+            height: 'calc(100% + 85px)',
+            border: 'none',
+            display: 'block',
+          }}
           allow="microphone"
           title="Dify Chatbot"
         />
@@ -788,7 +794,7 @@ const Main: FC<IMainProps> = () => {
         {/* Main content area with tabs */}
         <div className='flex-1 flex flex-col overflow-hidden bg-white'>
           {/* Chat Tab */}
-          <TabPanel tabId="chat" className="flex-1 overflow-hidden">
+          <TabPanel tabId="chat" className="flex-1 flex flex-col overflow-hidden">
             {renderChatContent()}
           </TabPanel>
 

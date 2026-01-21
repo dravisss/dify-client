@@ -1,14 +1,20 @@
+'use client'
+
 import type { FC } from 'react'
-import React from 'react'
+import React, { useEffect } from 'react'
 
-import type { IMainProps } from '@/app/components'
-import Main from '@/app/components'
+const App: FC<any> = () => {
+  useEffect(() => {
+    window.location.href = 'https://udify.app/chatbot/4K30XEPl5H2RcX2i'
+  }, [])
 
-const App: FC<IMainProps> = ({
-  params,
-}: any) => {
   return (
-    <Main params={params} />
+    <div className="flex h-screen w-full items-center justify-center bg-white">
+      <div className="flex flex-col items-center gap-2">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600"></div>
+        <p className="text-sm text-gray-500 font-medium">Redirecionando para o App...</p>
+      </div>
+    </div>
   )
 }
 
