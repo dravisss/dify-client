@@ -767,11 +767,10 @@ const Main: FC<IMainProps> = () => {
     const showWelcome = !hasSetInputs || chatList.filter(item => !item.isAnswer).length === 0
 
     return (
-      <div className="w-full h-full flex flex-col bg-white">
+      <div className="w-full h-full flex flex-col bg-white overflow-hidden">
         <iframe
-          src="https://udify.app/chatbot/ql1utSItKuu5Rm0i"
-          style={{ width: '100%', height: '100%', minHeight: '700px' }}
-          frameBorder="0"
+          src="https://udify.app/chatbot/4K30XEPl5H2RcX2i"
+          style={{ width: '100%', height: '100%', border: 'none' }}
           allow="microphone"
           title="Dify Chatbot"
         />
