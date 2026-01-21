@@ -27,7 +27,6 @@ import { addFileInfos, sortAgentSorts } from '@/utils/tools'
 import { useNavigationStore, useCanvasStore } from '@/stores'
 import { BottomNavigation, TabPanel } from '@/app/components/navigation'
 import { DocsPage } from '@/app/components/docs'
-import { HistoryPage } from '@/app/components/history'
 import { parseCanvasUpdates, stripCanvasUpdates, hasCanvasUpdates } from '@/utils/canvasParser'
 
 // Utility to strip system context from query before display
@@ -770,7 +769,7 @@ const Main: FC<IMainProps> = () => {
     return (
       <div className="w-full h-full flex flex-col bg-white">
         <iframe
-          src="https://udify.app/chatbot/4K30XEPl5H2RcX2i"
+          src="https://udify.app/chatbot/ql1utSItKuu5Rm0i"
           style={{ width: '100%', height: '100%', minHeight: '700px' }}
           frameBorder="0"
           allow="microphone"
@@ -807,14 +806,6 @@ const Main: FC<IMainProps> = () => {
             <DocsPage />
           </TabPanel>
 
-          {/* History Tab */}
-          <TabPanel tabId="history" className="flex-1 overflow-hidden">
-            <HistoryPage
-              conversationList={conversationList}
-              currentConversationId={currConversationId}
-              onSelectConversation={handleConversationIdChange}
-            />
-          </TabPanel>
         </div>
       </div>
 

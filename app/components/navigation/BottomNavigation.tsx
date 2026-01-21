@@ -32,7 +32,6 @@ const HistoryIcon = () => (
 const navItems: NavItem[] = [
   { id: 'chat', icon: <ChatIcon />, label: 'Chat' },
   { id: 'docs', icon: <DocsIcon />, label: 'Docs' },
-  { id: 'history', icon: <HistoryIcon />, label: 'Histórico' },
 ]
 
 interface BottomNavigationProps {
