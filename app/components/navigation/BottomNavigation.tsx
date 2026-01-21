@@ -47,7 +47,7 @@ const BottomNavigation: FC<BottomNavigationProps> = ({ className }) => {
         'flex-shrink-0 w-full',
         'bg-white border-t border-gray-200',
         'flex items-center justify-around',
-        'h-14 px-4',
+        'h-12 px-4',
         'safe-area-pb', // Safe area for mobile
         className,
       )}

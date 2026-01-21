@@ -9,7 +9,6 @@ import { useBoolean, useGetState } from 'ahooks'
 import useConversation from '@/hooks/use-conversation'
 import Toast from '@/app/components/base/toast'
 import Sidebar from '@/app/components/sidebar'
-import Header from '@/app/components/header'
 import { fetchAppParams, fetchChatList, fetchConversations, generationConversationName, sendChatMessage, updateFeedback } from '@/service'
 import type { ChatItem, ConversationItem, Feedbacktype, PromptConfig, VisionFile, VisionSettings } from '@/types/app'
 import type { FileUpload } from '@/app/components/base/file-uploader-in-attachment/types'
@@ -783,18 +782,11 @@ const Main: FC<IMainProps> = () => {
   if (!APP_ID || !APP_INFO || !promptConfig) { return <Loading type='app' /> }
 
   return (
-    <div className='fixed inset-0 flex flex-col bg-gray-100 overflow-hidden'>
-      <Header
-        title={APP_INFO.title}
-        isMobile={isMobile}
-        onShowSideBar={showSidebar}
-        onCreateNewChat={createNewChat}
-        onShowCanvas={showMobileCanvas}
-      />
+    <div className='fixed inset-0 flex flex-col bg-white overflow-hidden'>
 
       <div className="flex-1 flex overflow-hidden">
         {/* Main content area with tabs */}
-        <div className='flex-1 flex flex-col overflow-hidden bg-white rounded-t-2xl'>
+        <div className='flex-1 flex flex-col overflow-hidden bg-white'>
           {/* Chat Tab */}
           <TabPanel tabId="chat" className="flex-1 overflow-hidden">
             {renderChatContent()}
