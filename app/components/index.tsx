@@ -5,7 +5,6 @@ import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import produce, { setAutoFreeze } from 'immer'
 import { useBoolean, useGetState } from 'ahooks'
-import cn from 'classnames'
 
 import useConversation from '@/hooks/use-conversation'
 import Toast from '@/app/components/base/toast'
@@ -15,7 +14,6 @@ import { fetchAppParams, fetchChatList, fetchConversations, generationConversati
 import type { ChatItem, ConversationItem, Feedbacktype, PromptConfig, VisionFile, VisionSettings } from '@/types/app'
 import type { FileUpload } from '@/app/components/base/file-uploader-in-attachment/types'
 import { Resolution, TransferMethod, WorkflowRunningStatus } from '@/types/app'
-import Chat from '@/app/components/chat'
 import { setLocaleOnClient } from '@/i18n/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Loading from '@/app/components/base/loading'
@@ -28,10 +26,8 @@ import { addFileInfos, sortAgentSorts } from '@/utils/tools'
 // New imports for Co-Piloto features
 import { useNavigationStore, useCanvasStore } from '@/stores'
 import { BottomNavigation, TabPanel } from '@/app/components/navigation'
-import { CanvasSEI } from '@/app/components/canvas'
 import { DocsPage } from '@/app/components/docs'
 import { HistoryPage } from '@/app/components/history'
-import { WelcomePage } from '@/app/components/welcome'
 import { parseCanvasUpdates, stripCanvasUpdates, hasCanvasUpdates } from '@/utils/canvasParser'
 
 // Utility to strip system context from query before display
@@ -772,102 +768,14 @@ const Main: FC<IMainProps> = () => {
     const showWelcome = !hasSetInputs || chatList.filter(item => !item.isAnswer).length === 0
 
     return (
-      <div className={cn(
-        'flex h-full overflow-hidden',
-        isMobile ? 'flex-col' : 'flex-row',
-      )}>
-        {/* Canvas Panel - Collapsible sidebar */}
-        {/* Canvas Panel - Collapsible sidebar */}
-        {(!isCanvasCollapsed || (isMobile && isShowMobileCanvas)) && (
-          <div className={cn(
-            'bg-[#f2efeb] border-r border-gray-200 flex-shrink-0 overflow-hidden',
-            isMobile ? 'fixed inset-0 z-50 w-full h-[100dvh]' : 'w-[380px] h-full',
-          )}>
-            <div className="h-full flex flex-col relative">
-              {isMobile && (
-                <button
-                  onClick={hideMobileCanvas}
-                  className="absolute top-4 right-4 z-50 p-2 bg-white rounded-full shadow-sm text-gray-500"
-                >
-                  ✕
-                </button>
-              )}
-              <CanvasSEI
-                isCollapsed={false}
-                onToggleCollapse={toggleCanvasCollapse}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Collapsed Canvas Toggle Button - Desktop only */}
-        {isCanvasCollapsed && !isMobile && (
-          <button
-            onClick={toggleCanvasCollapse}
-            className="flex-shrink-0 w-12 h-full bg-[#f2efeb] border-r border-gray-200 flex flex-col items-center justify-center gap-2 hover:bg-gray-100 transition-colors"
-            title="Expandir Canvas"
-          >
-            <span className="text-xl">📋</span>
-            <svg className="w-4 h-4 text-gray-500 rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-        )}
-
-        {/* Chat Panel - Main content area */}
-        <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-white overflow-hidden">
-          {/* Chat Header */}
-          <div className="flex-shrink-0 h-14 border-b border-gray-100 flex items-center justify-between px-4 bg-white">
-            <div className="flex items-center gap-2">
-              <span className="text-lg font-semibold text-gray-800">💬 Chat</span>
-              {currConversationId && currConversationId !== '-1' && (
-                <span className="text-xs text-gray-400 truncate max-w-[150px]">
-                  {conversationName || 'Conversa atual'}
-                </span>
-              )}
-            </div>
-            <button
-              onClick={() => {
-                setCurrConversationId('-1')
-                setChatList([])
-                setChatNotStarted()
-                resetNewConversationInputs()
-                setCurrentConversation('-1')
-              }}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-[#4b8c99] hover:bg-[#4b8c99]/10 rounded-lg transition-colors"
-              title="Nova Conversa"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              <span>Nova</span>
-            </button>
-          </div>
-
-          {/* Chat Body - either Welcome or Messages + Input */}
-          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-            {showWelcome
-              ? (
-                <WelcomePage
-                  onSend={handleWelcomeSend}
-                  className="flex-1"
-                />
-              )
-              : (
-                <div className="flex-1 min-h-0" ref={chatListDomRef}>
-                  <Chat
-                    chatList={chatList}
-                    onSend={handleSend}
-                    onFeedback={handleFeedback}
-                    isResponding={isResponding}
-                    checkCanSend={checkCanSend}
-                    visionConfig={visionConfig}
-                    fileConfig={fileConfig}
-                  />
-                </div>
-              )}
-          </div>
-        </div>
+      <div className="w-full h-full flex flex-col bg-white">
+        <iframe
+          src="https://udify.app/chatbot/4K30XEPl5H2RcX2i"
+          style={{ width: '100%', height: '100%', minHeight: '700px' }}
+          frameBorder="0"
+          allow="microphone"
+          title="Dify Chatbot"
+        />
       </div>
     )
   }
