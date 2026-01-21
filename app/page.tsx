@@ -5,7 +5,7 @@ import React, { useEffect } from 'react'
 
 const App: FC<any> = () => {
   useEffect(() => {
-    window.location.href = 'https://udify.app/chatbot/4K30XEPl5H2RcX2i'
+    window.location.href = 'https://udify.app/chat/ql1utSItKuu5Rm0i'
   }, [])
 
   return (
